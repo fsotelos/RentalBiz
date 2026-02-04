@@ -6,6 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const paymentController = require('../controllers/paymentController');
+const paymentSchedulerController = require('../controllers/paymentSchedulerController');
 const { authenticate, authorize } = require('../middleware/auth');
 const { paymentValidation, commonValidation } = require('../middleware/validation');
 
@@ -23,5 +24,35 @@ router.put('/:id', commonValidation.uuid, paymentController.updatePayment);
 router.put('/:id/pay', commonValidation.uuid, paymentController.markAsPaid);
 router.delete('/:id', commonValidation.uuid, paymentController.deletePayment);
 router.post('/generate-recurring', paymentController.generateRecurringPayments);
+
+// === Rutas de Programación de Pagos ===
+
+// Programar pagos de renta
+router.post('/schedule/rent', 
+  authorize('landlord'), 
+  paymentSchedulerController.scheduleRentPayments
+);
+
+// Programar pagos de servicios públicos
+router.post('/schedule/utility', 
+  authorize('landlord'), 
+  paymentSchedulerController.scheduleUtilityPayments
+);
+
+// Obtener estado de programación de un contrato
+router.get('/schedule/status/:contractId', 
+  paymentSchedulerController.getScheduleStatus
+);
+
+// Rellenar espacios vacíos en pagos
+router.post('/schedule/fill-gaps', 
+  authorize('landlord'), 
+  paymentSchedulerController.fillGaps
+);
+
+// Vista previa de programación sin crear pagos
+router.post('/schedule/preview', 
+  paymentSchedulerController.previewSchedule
+);
 
 module.exports = router;
