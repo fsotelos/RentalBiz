@@ -14,6 +14,7 @@ const paymentApprovalRoutes = require('./paymentApprovalRoutes');
 const auditLogRoutes = require('./auditLogRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const userRoutes = require('./userRoutes');
+const extractRoutes = require('./extractRoutes');
 const testRoutes = require('./testRoutes');
 
 // Rutas de autenticación
@@ -44,6 +45,9 @@ router.use('/audit-logs', auditLogRoutes);
 
 // Rutas de notificaciones
 router.use('/notifications', notificationRoutes);
+
+// Rutas de extractos
+router.use('/extracts', extractRoutes);
 
 // Endpoint de estado del sistema
 router.get('/health', (req, res) => {

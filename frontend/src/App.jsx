@@ -13,6 +13,7 @@ import ContractForm from './pages/Contracts/ContractForm'
 import PaymentsList from './pages/Payments/PaymentsList'
 import PaymentDetailPage from './pages/Payments/PaymentDetailPage'
 import PaymentScheduler from './pages/Payments/PaymentScheduler'
+import Extracts from './pages/Extracts/Extracts'
 import Settings from './pages/Settings/Settings'
 import NotFound from './pages/NotFound'
 
@@ -88,6 +89,7 @@ function App() {
         <Route path="payments" element={<PaymentsList />} />
         <Route path="payments/schedule" element={<PaymentScheduler />} />
         <Route path="payments/:id" element={<PaymentDetailPage />} />
+        <Route path="extracts" element={<Extracts />} />
         <Route path="settings" element={<Settings />} />
       </Route>
       
