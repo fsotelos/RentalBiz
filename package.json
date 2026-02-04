@@ -1,0 +1,42 @@
+{
+  "name": "rentalbiz",
+  "version": "1.0.0",
+  "description": "Sistema de Gestión Integral de Propiedades en Renta",
+  "author": "RentalBiz Team",
+  "license": "MIT",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && npm start",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "migrate": "cd backend && npm run migrate",
+    "migrate:prod": "cd backend && npm run migrate:prod",
+    "seed": "cd backend && npm run seed",
+    "test": "cd backend && npm test",
+    "deploy": "cd scripts && deploy.bat",
+    "prepare": "husky install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "husky": "^8.0.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "rental",
+    "property-management",
+    "real-estate",
+    "react",
+    "nodejs",
+    "express",
+    "mysql"
+  ]
+}
