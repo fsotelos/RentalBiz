@@ -186,3 +186,20 @@ export const notificationService = {
   getDashboard: () => api.get('/notifications/dashboard'),
   sendReminders: (data) => api.post('/notifications/send-reminders', data)
 }
+
+export const paymentSchedulerService = {
+  // Schedule rent payments
+  scheduleRent: (data) => api.post('/payments/schedule/rent', data),
+  
+  // Schedule utility payments
+  scheduleUtility: (data) => api.post('/payments/schedule/utility', data),
+  
+  // Get scheduling status for a contract
+  getScheduleStatus: (contractId, year) => api.get(`/payments/schedule/status/${contractId}`, { params: { year } }),
+  
+  // Fill gaps in payment schedule
+  fillGaps: (data) => api.post('/payments/schedule/fill-gaps', data),
+  
+  // Preview schedule without creating payments
+  preview: (data) => api.post('/payments/schedule/preview', data)
+}

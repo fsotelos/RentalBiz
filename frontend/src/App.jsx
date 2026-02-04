@@ -12,6 +12,7 @@ import ContractDetail from './pages/Contracts/ContractDetail'
 import ContractForm from './pages/Contracts/ContractForm'
 import PaymentsList from './pages/Payments/PaymentsList'
 import PaymentDetailPage from './pages/Payments/PaymentDetailPage'
+import PaymentScheduler from './pages/Payments/PaymentScheduler'
 import Settings from './pages/Settings/Settings'
 import NotFound from './pages/NotFound'
 
@@ -85,6 +86,7 @@ function App() {
         <Route path="contracts/:id" element={<ContractDetail />} />
         <Route path="contracts/:id/edit" element={<ContractForm />} />
         <Route path="payments" element={<PaymentsList />} />
+        <Route path="payments/schedule" element={<PaymentScheduler />} />
         <Route path="payments/:id" element={<PaymentDetailPage />} />
         <Route path="settings" element={<Settings />} />
       </Route>
