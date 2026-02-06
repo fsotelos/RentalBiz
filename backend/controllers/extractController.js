@@ -49,6 +49,8 @@ exports.generateCertificate = async (req, res) => {
       return res.status(404).json({ error: 'Contrato no encontrado' });
     }
 
+    logger.info(`[CERTIFICATE] Contract found: ${contract.contract_number}, start_date: ${contract.start_date}`);
+
     // Verificar que el usuario tenga acceso al contrato
     if (contract.tenant_id !== userId && contract.landlord_id !== userId) {
       return res.status(403).json({ error: 'No tienes permiso para ver este contrato' });
@@ -249,9 +251,9 @@ exports.generateCertificate = async (req, res) => {
     doc.fillColor('#475569')
        .fontSize(10)
        .font('Helvetica')
-       .text(`Nombre: ${contract.tenant.first_name} ${contract.tenant.last_name}`)
-       .text(`Correo: ${contract.tenant.email}`)
-       .text(`Teléfono: ${contract.tenant.phone || 'N/A'}`);
+       .text(`Nombre: ${contract.tenant?.first_name || 'N/A'} ${contract.tenant?.last_name || 'N/A'}`)
+       .text(`Correo: ${contract.tenant?.email || 'N/A'}`)
+       .text(`Teléfono: ${contract.tenant?.phone || 'N/A'}`);
 
     doc.moveDown(1);
 
@@ -267,9 +269,9 @@ exports.generateCertificate = async (req, res) => {
        .fontSize(10)
        .font('Helvetica')
        .text(`Número de contrato: ${contract.contract_number}`)
-       .text(`Unidad arrendada: ${contract.property.name}`)
-       .text(`Dirección: ${contract.property.address}, ${contract.property.city}, ${contract.property.state}`)
-       .text(`Arrendador: ${contract.landlord.first_name} ${contract.landlord.last_name}`);
+       .text(`Unidad arrendada: ${contract.property?.name || 'N/A'}`)
+       .text(`Dirección: ${contract.property?.address || 'N/A'}, ${contract.property?.city || 'N/A'}, ${contract.property?.state || 'N/A'}`)
+       .text(`Arrendador: ${contract.landlord?.first_name || 'N/A'} ${contract.landlord?.last_name || 'N/A'}`);
 
     doc.moveDown(1.5);
 
@@ -403,10 +405,18 @@ exports.generateCertificate = async (req, res) => {
 
   } catch (error) {
     logger.error('Error generando certificado:', error);
-    res.status(500).json({
-      error: 'Error al generar el certificado',
-      details: error.message
-    });
+    logger.error('Error stack:', error.stack);
+    
+    // Only send JSON error if response hasn't started
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: 'Error al generar el certificado',
+        details: error.message
+      });
+    } else {
+      // Response already started, just log
+      logger.error('Response already sent, cannot send error JSON');
+    }
   }
 };
 
