@@ -57,66 +57,50 @@ exports.generateCertificate = async (req, res) => {
     }
 
     // Determinar el rango de fechas para el mes
-    // El periodo del certificado es el mes que el usuario selecciona
-    // Pero los pagos pueden tener due_date en el mes siguiente
-    // Por ejemplo: pago de enero puede vencer el 1-5 de febrero
+    // El certificado muestra los pagos hasta la fecha de corte (fin del mes seleccionado)
+    // Se incluyen: pending, overdue (cualquier fecha hasta la fecha de corte)
+    // Se excluyen: approved, paid, y pagos con due_date después de la fecha de corte
     
-    // Crear rango amplio: desde el día 1 del mes seleccionado hasta el día 15 del mes siguiente
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 15); // 15 días del mes siguiente
+    // Fecha de corte: último día del mes seleccionado
+    const cutoffDate = new Date(parseInt(year), parseInt(month), 0); // Último día del mes
+    const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
     
-    // Formatear fechas para la consulta SQL (YYYY-MM-DD)
-    const startDateStr = startDate.toISOString().split('T')[0];
-    const endDateStr = endDate.toISOString().split('T')[0];
+    logger.info(`Fecha de corte para certificado: ${cutoffDateStr}`);
 
-    logger.info(`Rango de fechas para certificado: ${startDateStr} a ${endDateStr}`);
-
-    // Obtener todos los pagos que podrían corresponder al periodo
-    const payments = await Payment.findAll({
+    // Obtener todos los pagos del contrato hasta la fecha de corte
+    // INCLUYE: pending, overdue (cualquier fecha hasta cutoff)
+    // EXCLUYE: approved, paid, y pagos con due_date después de cutoff
+    const allPayments = await Payment.findAll({
       where: {
         contract_id: contractId,
         due_date: {
-          [Op.between]: [startDateStr, endDateStr]
+          [Op.lte]: cutoffDateStr  // Menor o igual a la fecha de corte
+        },
+        status: {
+          [Op.notIn]: ['approved', 'paid']  // Excluir approved y paid
         }
       },
-      order: [['type', 'ASC'], ['due_date', 'ASC']]
+      order: [['due_date', 'ASC']]
     });
 
-    // Filtrar pagos por periodo: solo incluir los que corresponden al mes seleccionado
-    // Regla: Un pago corresponde a un mes si:
-    // 1. Su due_date está en ese mes, O
-    // 2. Su due_date está en los primeros 10 días del mes siguiente (corresponde al mes anterior)
-    const filteredPayments = payments.filter(payment => {
+    logger.info(`Pagos hasta la fecha de corte: ${allPayments.length}`);
+
+    // Filtrar pagos para mostrarlos en el certificado: solo los del mes seleccionado
+    // Esto es para la presentación visual en la tabla
+    const filteredPayments = allPayments.filter(payment => {
       const dueDate = new Date(payment.due_date);
       const dueMonth = dueDate.getMonth() + 1; // 1-12
-      const dueDay = dueDate.getDate();
       const dueYear = dueDate.getFullYear();
 
-      // Si el pago vence en el mes seleccionado, incluirlo
-      if (dueYear === parseInt(year) && dueMonth === parseInt(month)) {
-        return true;
-      }
-
-      // Si el pago vence en los primeros 10 días del mes SIGUIENTE, 
-      // se considera del periodo del mes ANTERIOR
-      if (dueYear === parseInt(year) && dueMonth === parseInt(month) + 1 && dueDay <= 10) {
-        return false; // NO incluir, corresponde al mes actual no al siguiente
-      }
-
-      // Si el pago vence en el mes ANTERIOR pero después del día 20,
-      // probablemente corresponde al mes actual
-      if (dueYear === parseInt(year) && dueMonth === parseInt(month) - 1 && dueDay > 20) {
-        return false; // NO incluir
-      }
-
-      return false;
+      // Solo mostrar pagos del mes seleccionado
+      return dueYear === parseInt(year) && dueMonth === parseInt(month);
     });
 
     // Log para debug
     logger.info(`Pagos encontrados para ${year}-${month}:`, {
-      total: payments.length,
-      filtered: filteredPayments.length,
-      payments: filteredPayments.map(p => ({
+      totalUnapprovedUntilCutoff: allPayments.length,
+      filteredForDisplay: filteredPayments.length,
+      payments: allPayments.map(p => ({
         type: p.type,
         amount: p.amount,
         status: p.status,
@@ -124,7 +108,7 @@ exports.generateCertificate = async (req, res) => {
       }))
     });
 
-    // Calcular totales por categoría usando los pagos filtrados
+    // Calcular totales usando TODOS los pagos hasta la fecha de corte
     const paymentSummary = {
       rent: { pending: 0, paid: 0, status: 'N/A' },
       electricity: { pending: 0, paid: 0, status: 'N/A' },
@@ -136,30 +120,19 @@ exports.generateCertificate = async (req, res) => {
     let totalPaid = 0;
     let totalPending = 0;
 
-    filteredPayments.forEach(payment => {
+    // Usar allPayments para el cálculo total (todos los no aprobados hasta cutoff)
+    allPayments.forEach(payment => {
       const type = payment.type === 'maintenance' || payment.type === 'deposit' ? 'other' : payment.type;
       const amount = parseFloat(payment.amount);
 
-      // Los estados 'approved' y 'paid' se consideran pagados
-      if (payment.status === 'approved' || payment.status === 'paid') {
-        paymentSummary[type].paid += amount;
-        totalPaid += amount;
-        // Si al menos un pago está aprobado/pagado, marcar como 'paid'
-        if (paymentSummary[type].status === 'N/A') {
-          paymentSummary[type].status = 'paid';
-        }
-      } else {
-        // Cualquier otro estado (pending, overdue, etc.) se considera pendiente
-        paymentSummary[type].pending += amount;
-        totalPending += amount;
-        // Si no hay pagos aprobados, usar el estado del pago pendiente
-        if (paymentSummary[type].status === 'N/A') {
-          paymentSummary[type].status = payment.status;
-        }
-        // Si hay tanto pagados como pendientes, marcar como 'partial'
-        if (paymentSummary[type].paid > 0) {
-          paymentSummary[type].status = 'partial';
-        }
+      // Los estados 'approved' y 'paid' ya están excluidos de allPayments
+      // Todos los pagos en allPayments son pending, overdue, o similar
+      paymentSummary[type].pending += amount;
+      totalPending += amount;
+
+      // Determinar el estado para mostrar
+      if (paymentSummary[type].status === 'N/A') {
+        paymentSummary[type].status = payment.status === 'overdue' ? 'overdue' : 'pending';
       }
     });
 
@@ -171,7 +144,8 @@ exports.generateCertificate = async (req, res) => {
     });
 
     // Determinar si está a paz y salvo
-    const isPazYSalvo = totalPending === 0 && filteredPayments.length > 0;
+    // Un cliente está a paz y salvo si NO tiene ningún pago pendiente/vencido hasta la fecha de corte
+    const isPazYSalvo = allPayments.length === 0;
 
     // Crear el PDF
     const doc = new PDFDocument({
